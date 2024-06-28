@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Saucy\Dashboard\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class DashboardCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'dashboard';
 
     public $description = 'My command';
 
