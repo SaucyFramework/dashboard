@@ -74,6 +74,10 @@
                                                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
                                                     @if($a->type === 'store_checkpoint')
                                                         new position: {{$a->data['position'] ?? 'na'}}
+                                                        processedEvents:
+                                                        @foreach($a->data['messages_processed'] ?? [] as $key => $data)
+                                                            {{$key}}: count: {{$data['count']}}, max time:{{$data['max_time']}}, total_time:{{$data['total_time']}} <br>
+                                                        @endforeach
                                                     @endif
                                                     @if($a->type === 'loading_events')
                                                         from: {{$a->data['fromPosition'] ?? 'na'}}
