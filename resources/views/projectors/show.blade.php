@@ -14,7 +14,7 @@
                   </button>
                 </span>
                 @else
-                <span class="ml-3 hidden sm:block">
+                    <span class="ml-3 hidden sm:block">
                   <button  wire:loading.class="opacity-50" wire:click="pause" type="button" class="inline-flex items-center rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-800/20">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="-ml-0.5 mr-1.5 h-5 w-5" >
                         <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
@@ -43,7 +43,7 @@
         </div>
     </header>
     <main>
-        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mx-auto px-4 py-8 sm:px-6 lg:px-8">
             <div class="overflow-hidden rounded-lg bg-white shadow">
                 <div class="px-4 py-5 sm:p-6">
                     <div class="px-4 sm:px-6 lg:px-8">
@@ -73,8 +73,7 @@
                                                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">{{$a->occurredAt->format('Y-m-d H:i:s')}}</td>
                                                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
                                                     @if($a->type === 'store_checkpoint')
-                                                        new position: {{$a->data['position'] ?? 'na'}}
-                                                        processedEvents:
+                                                        new position: {{$a->data['position'] ?? 'na'}} <br>
                                                         @foreach($a->data['messages_processed'] ?? [] as $key => $data)
                                                             {{$key}}: count: {{$data['count']}}, max time:{{$data['max_time']}}, total_time:{{$data['total_time']}} <br>
                                                         @endforeach
