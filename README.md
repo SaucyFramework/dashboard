@@ -1,60 +1,69 @@
-# This is my package dashboard
+# Saucy Dashboard
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/robertbaelde/dashboard.svg?style=flat-square)](https://packagist.org/packages/robertbaelde/dashboard)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/robertbaelde/dashboard/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/robertbaelde/dashboard/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/robertbaelde/dashboard/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/robertbaelde/dashboard/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/robertbaelde/dashboard.svg?style=flat-square)](https://packagist.org/packages/robertbaelde/dashboard)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/saucy/dashboard.svg?style=flat-square)](https://packagist.org/packages/saucy/dashboard)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/SaucyFramework/dashboard/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/SaucyFramework/dashboard/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/saucy/dashboard.svg?style=flat-square)](https://packagist.org/packages/saucy/dashboard)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
-
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/dashboard.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/dashboard)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+A monitoring dashboard for the Saucy event sourcing framework's projections. Provides a React-based UI to view projection status, activity logs, and manage projections (pause, resume, replay, trigger).
 
 ## Installation
 
-You can install the package via composer:
+Install the package via composer:
 
 ```bash
-composer require robertbaelde/dashboard
+composer require saucy/dashboard
 ```
 
-You can publish and run the migrations with:
+Publish the frontend assets:
 
 ```bash
-php artisan vendor:publish --tag="dashboard-migrations"
-php artisan migrate
+php artisan vendor:publish --tag="saucy-dashboard-assets"
 ```
 
-You can publish the config file with:
+> **Important:** Re-run this command after updating the package to get the latest frontend build.
+
+Optionally, publish the config file:
 
 ```bash
-php artisan vendor:publish --tag="dashboard-config"
+php artisan vendor:publish --tag="saucy-dashboard-config"
 ```
 
-This is the contents of the published config file:
+## Configuration
+
+The published config file (`config/saucy-dashboard.php`):
 
 ```php
 return [
+    'password' => env('SAUCY_DASHBOARD_PASSWORD', null),
 ];
 ```
 
-Optionally, you can publish the views using
+### Password Protection
 
-```bash
-php artisan vendor:publish --tag="dashboard-views"
+By default the dashboard is open to anyone. To require a password, add to your `.env`:
+
 ```
+SAUCY_DASHBOARD_PASSWORD=your-secret-password
+```
+
+When set, visitors must enter the password on a login screen. The authenticated session is managed via Laravel's session driver.
 
 ## Usage
 
-```php
-$dashboard = new Saucy\Dashboard();
-echo $dashboard->echoPhrase('Hello, Saucy!');
+Once installed, navigate to:
+
 ```
+https://your-app.com/saucy-dashboard
+```
+
+The dashboard provides:
+
+- **Dashboard** — main overview page
+- **Projections** — lists all registered projections with their position and status (running, paused, standby), auto-refreshes every 2 seconds
+- **Projection detail** — click a projection to see its activity log (refreshes every second) and action buttons:
+  - **Pause / Resume** — pause or resume the projection
+  - **Replay** — trigger a full replay from the beginning
+  - **Trigger** — manually start the process
 
 ## Testing
 
