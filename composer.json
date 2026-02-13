@@ -17,8 +17,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "illuminate/contracts": "^10.0||^11.0",
-        "livewire/livewire": "^3.5",
+        "illuminate/contracts": "^10.0||^11.0||^12.0",
         "saucy/saucy": "dev-main",
         "spatie/laravel-package-tools": "^1.16"
     },

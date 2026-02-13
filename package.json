@@ -1,27 +1,22 @@
 {
-  "name": "dashboard",
+  "name": "saucy-dashboard",
   "version": "1.0.0",
-  "description": "[![Latest Version on Packagist](https://img.shields.io/packagist/v/robertbaelde/dashboard.svg?style=flat-square)](https://packagist.org/packages/robertbaelde/dashboard) [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/robertbaelde/dashboard/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/robertbaelde/dashboard/actions?query=workflow%3Arun-tests+branch%3Amain) [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/robertbaelde/dashboard/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/robertbaelde/dashboard/actions?query=workflow%3A\"Fix+PHP+code+style+issues\"+branch%3Amain) [![Total Downloads](https://img.shields.io/packagist/dt/robertbaelde/dashboard.svg?style=flat-square)](https://packagist.org/packages/robertbaelde/dashboard)",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
+  "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
-  "type": "module",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "autoprefixer": "^10.4.19",
-    "laravel-mix": "^6.0.49",
-    "laravel-vite-plugin": "^1.0.4",
-    "postcss": "^8.4.38",
-    "vite": "^5.3.1"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.0"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.4"
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
   }
 }
