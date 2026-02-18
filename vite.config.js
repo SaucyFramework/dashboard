@@ -5,7 +5,7 @@ export default defineConfig({
     plugins: [react()],
     publicDir: false,
     build: {
-        outDir: 'public',
+        outDir: 'resources/dist',
         emptyOutDir: true,
         rollupOptions: {
             input: 'resources/js/main.jsx',

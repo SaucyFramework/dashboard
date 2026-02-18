@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Lock } from 'lucide-react';
 
 export default function Login() {
     const { login } = useAuth();
@@ -24,46 +29,39 @@ export default function Login() {
     }
 
     return (
-        <div className="min-h-full bg-slate-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div>
-                    <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-                        Saucy Dashboard
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-600">
-                        Enter password to continue
-                    </p>
-                </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    {error && (
-                        <div className="rounded-md bg-red-50 p-4">
-                            <p className="text-sm text-red-700">{error}</p>
+        <div className="min-h-full bg-background flex items-center justify-center py-12 px-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <Lock className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle>Saucy Dashboard</CardTitle>
+                    <CardDescription>Enter password to continue</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {error && (
+                            <div className="rounded-md bg-destructive/10 p-3">
+                                <p className="text-sm text-destructive">{error}</p>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Enter your password"
+                            />
                         </div>
-                    )}
-                    <div>
-                        <label htmlFor="password" className="sr-only">Password</label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="relative block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                            placeholder="Password"
-                        />
-                    </div>
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="group relative flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-                        >
+                        <Button type="submit" disabled={submitting} className="w-full">
                             {submitting ? 'Signing in...' : 'Sign in'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 }
