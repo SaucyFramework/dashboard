@@ -6,7 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>Saucy Dashboard</title>
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-        <link href="/vendor/saucy-dashboard/app.css" rel="stylesheet">
+        <link href="{{ asset('vendor/saucy-dashboard/app.css') }}" rel="stylesheet">
     </head>
     <body class="h-full">
         <div id="app"></div>
@@ -15,6 +15,6 @@
                 basePath: '/saucy-dashboard'
             };
         </script>
-        <script src="/vendor/saucy-dashboard/app.js"></script>
+        <script src="{{ asset('vendor/saucy-dashboard/app.js') }}"></script>
     </body>
 </html>
