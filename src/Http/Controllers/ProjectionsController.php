@@ -141,11 +141,43 @@ class ProjectionsController
 
             $replayProcess = array_values(array_filter($allRunning, fn (RunningProcess $p) => $p->subscriptionId === $replaySubscriptionId))[0] ?? null;
 
+            // Calculate ETA from recent checkpoint activity
+            $etaSeconds = null;
+            $eventsPerSecond = null;
+            $remaining = $maxPosition - $replayPosition;
+
+            if ($remaining > 0 && $replayPosition > 0) {
+                $recentCheckpoints = DB::table('subscription_activity_stream_log')
+                    ->where('stream_id', $replaySubscriptionId)
+                    ->where('type', 'store_checkpoint')
+                    ->orderByDesc('id')
+                    ->limit(10)
+                    ->get(['occurred_at', 'data']);
+
+                if ($recentCheckpoints->count() >= 2) {
+                    $newest = $recentCheckpoints->first();
+                    $oldest = $recentCheckpoints->last();
+
+                    $newestData = json_decode($newest->data, true);
+                    $oldestData = json_decode($oldest->data, true);
+
+                    $positionDelta = ($newestData['position'] ?? 0) - ($oldestData['position'] ?? 0);
+                    $timeDelta = strtotime($newest->occurred_at) - strtotime($oldest->occurred_at);
+
+                    if ($timeDelta > 0 && $positionDelta > 0) {
+                        $eventsPerSecond = round($positionDelta / $timeDelta, 1);
+                        $etaSeconds = (int) ceil($remaining / $eventsPerSecond);
+                    }
+                }
+            }
+
             $replay = [
                 'status' => $replayStatus->value,
                 'position' => $replayPosition,
                 'has_process' => $replayProcess !== null,
                 'process_status' => $replayProcess?->status,
+                'events_per_second' => $eventsPerSecond,
+                'eta_seconds' => $etaSeconds,
             ];
         }
 

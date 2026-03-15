@@ -22,8 +22,8 @@ function formatShortType(type) {
 }
 
 export default function Dashboard() {
-    const { data: stats } = usePolling(() => get('/stats'), 5000);
-    const { data: throughputData, loading: throughputLoading } = usePolling(() => get('/analytics/throughput?hours=24'), 30000);
+    const { data: stats } = usePolling(() => get('/stats'), 10000);
+    const { data: throughputData, loading: throughputLoading } = usePolling(() => get('/analytics/throughput?hours=24'), 60000);
     const { data: eventTypesData, loading: eventTypesLoading } = usePolling(() => get('/analytics/event-types?days=7'), 60000);
 
     const throughput = throughputData?.throughput || [];

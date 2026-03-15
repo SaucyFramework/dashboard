@@ -21,7 +21,7 @@ export default function ShowPoisonMessage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { notify } = useNotifications();
-    const { data, loading } = usePolling(() => get(`/poison-messages/${id}`), 2000);
+    const { data, loading } = usePolling(() => get(`/poison-messages/${id}`), 10000);
 
     const [retrying, setRetrying] = useState(false);
     const [skipping, setSkipping] = useState(false);

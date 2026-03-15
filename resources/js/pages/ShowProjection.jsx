@@ -40,12 +40,20 @@ function formatShortType(type) {
     return parts[parts.length - 1] || type;
 }
 
+function formatEta(seconds) {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
+}
+
 export default function ShowProjection() {
     const { streamId } = useParams();
     const { notify } = useNotifications();
-    const { data, loading } = usePolling(() => get(`/projections/${streamId}`), 1000);
-    const { data: snapshotData } = usePolling(() => get(`/snapshots/${streamId}?hours=24`), 15000);
-    const { data: speedData } = usePolling(() => get(`/analytics/processing-speed?stream_id=${streamId}&hours=24`), 15000);
+    const { data, loading } = usePolling(() => get(`/projections/${streamId}`), 10000);
+    const { data: snapshotData } = usePolling(() => get(`/snapshots/${streamId}?hours=24`), 30000);
+    const { data: speedData } = usePolling(() => get(`/analytics/processing-speed?stream_id=${streamId}&hours=24`), 30000);
 
     const [showSwapConfirm, setShowSwapConfirm] = useState(false);
     const [showStartReplayConfirm, setShowStartReplayConfirm] = useState(false);
@@ -335,7 +343,15 @@ export default function ShowProjection() {
                                             <>{replayBehind.toLocaleString()} events behind max</>
                                         )}
                                     </span>
-                                    <span>{maxPosition.toLocaleString()} total events</span>
+                                    <span className="flex items-center gap-3">
+                                        {replay.events_per_second != null && (
+                                            <span>{replay.events_per_second} events/s</span>
+                                        )}
+                                        {replay.eta_seconds != null && (
+                                            <span>ETA {formatEta(replay.eta_seconds)}</span>
+                                        )}
+                                        <span>{maxPosition.toLocaleString()} total events</span>
+                                    </span>
                                 </div>
                             </CardContent>
                         </Card>

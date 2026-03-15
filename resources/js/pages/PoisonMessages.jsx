@@ -57,7 +57,7 @@ export default function PoisonMessages() {
     queryParams.set('status', statusFilter);
     if (subscriptionFilter) queryParams.set('subscription', subscriptionFilter);
 
-    const { data, loading } = usePolling(() => get(`/poison-messages?${queryParams.toString()}`), 3000);
+    const { data, loading } = usePolling(() => get(`/poison-messages?${queryParams.toString()}`), 10000);
 
     const messages = data?.poison_messages || [];
     const counts = data?.counts || {};

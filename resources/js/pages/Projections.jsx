@@ -32,7 +32,7 @@ function getStatus(p) {
 export default function Projections() {
     const navigate = useNavigate();
     const { notify } = useNotifications();
-    const { data, loading } = usePolling(() => get('/projections'), 2000);
+    const { data, loading } = usePolling(() => get('/projections'), 10000);
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
