@@ -502,17 +502,18 @@ export default function ShowProjection() {
                                         <CardDescription>Average processing time per event type (ms)</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <ChartContainer className="h-[200px]">
+                                        <ChartContainer className={typeSpeedData.length > 5 ? 'h-[300px]' : 'h-[200px]'}>
                                             <BarChart data={typeSpeedData} layout="vertical" margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                                                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
                                                 <XAxis type="number" tick={{ fontSize: 11 }} unit="ms" />
                                                 <YAxis
                                                     type="category"
-                                                    dataKey="type"
+                                                    dataKey="full_type"
                                                     tick={{ fontSize: 10 }}
-                                                    width={100}
+                                                    width={220}
                                                 />
                                                 <Tooltip content={<ChartTooltipContent
+                                                    labelKey="full_type"
                                                     valueFormatter={v => `${v}ms`}
                                                 />} />
                                                 <Bar dataKey="avg_ms" name="Avg" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]}>

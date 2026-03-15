@@ -46,10 +46,15 @@ class PoisonMessagesController
             'resolved_at' => $row->resolved_at,
         ]);
 
+        $groupedCounts = DB::table('poison_messages')
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
         $counts = [
-            'poisoned' => DB::table('poison_messages')->where('status', 'poisoned')->count(),
-            'resolved' => DB::table('poison_messages')->where('status', 'resolved')->count(),
-            'skipped' => DB::table('poison_messages')->where('status', 'skipped')->count(),
+            'poisoned' => (int) ($groupedCounts['poisoned'] ?? 0),
+            'resolved' => (int) ($groupedCounts['resolved'] ?? 0),
+            'skipped' => (int) ($groupedCounts['skipped'] ?? 0),
         ];
 
         return response()->json([

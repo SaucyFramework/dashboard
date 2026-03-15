@@ -4,6 +4,7 @@ namespace Saucy\Dashboard\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Saucy\Core\Projections\ProjectorMap;
@@ -167,14 +168,15 @@ class EventStoreController
     {
         $q = $request->query('q', '');
 
+        // Use the indexed reconstitution_index (stream_name, stream_position)
+        // by querying stream_position=1 to get one row per stream efficiently
         $query = DB::table('event_store')
-            ->select('stream_name')
-            ->distinct()
+            ->where('stream_position', 1)
             ->orderBy('stream_name')
             ->limit(20);
 
         if ($q) {
-            $query->where('stream_name', 'like', "%{$q}%");
+            $query->where('stream_name', 'like', "{$q}%");
         }
 
         return response()->json([
@@ -184,7 +186,7 @@ class EventStoreController
 
     public function types(TypeMap $typeMap): JsonResponse
     {
-        $types = cache()->remember('saucy-dashboard:event-types', 60, function () use ($typeMap) {
+        $types = Cache::remember('saucy-dashboard:event-types', 300, function () use ($typeMap) {
             $messageTypes = DB::table('event_store')
                 ->select('message_type')
                 ->distinct()

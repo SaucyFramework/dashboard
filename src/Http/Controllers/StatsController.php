@@ -45,10 +45,15 @@ class StatsController
             }
         }
 
+        $poisonCounts = DB::table('poison_messages')
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
         $poisonCounts = [
-            'poisoned' => DB::table('poison_messages')->where('status', 'poisoned')->count(),
-            'resolved' => DB::table('poison_messages')->where('status', 'resolved')->count(),
-            'skipped' => DB::table('poison_messages')->where('status', 'skipped')->count(),
+            'poisoned' => (int) ($poisonCounts['poisoned'] ?? 0),
+            'resolved' => (int) ($poisonCounts['resolved'] ?? 0),
+            'skipped' => (int) ($poisonCounts['skipped'] ?? 0),
         ];
 
         return response()->json([
