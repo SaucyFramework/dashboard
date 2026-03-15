@@ -15,7 +15,7 @@ const CHART_COLORS = [
 
 function ChartContainer({ children, className = '' }) {
     return (
-        <div className={className} style={{ width: '100%', height: '100%' }}>
+        <div className={className}>
             <ResponsiveContainer width="100%" height="100%">
                 {children}
             </ResponsiveContainer>
