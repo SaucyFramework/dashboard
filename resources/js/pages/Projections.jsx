@@ -11,7 +11,7 @@ import { Progress } from '../components/ui/progress';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Rocket, RefreshCw, AlertTriangle, Skull } from 'lucide-react';
+import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Rocket, RefreshCw, AlertTriangle, Skull, Database } from 'lucide-react';
 
 const basePath = window.__SAUCY_CONFIG__?.basePath || '/saucy-dashboard';
 
@@ -371,6 +371,12 @@ export default function Projections() {
                                                             )
                                                         ) : (
                                                             <StatusIndicator color="blue" label="standby" />
+                                                        )}
+                                                        {p.replay && (
+                                                            <Badge variant="info" className="text-[10px] gap-1">
+                                                                <Database className="h-3 w-3" />
+                                                                {p.replay.status}
+                                                            </Badge>
                                                         )}
                                                         {p.poison_message_count > 0 && (
                                                             <Badge variant="destructive" className="text-[10px] gap-1">

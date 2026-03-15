@@ -27,6 +27,10 @@ Route::group([
         Route::post('api/projections/{streamId}/resume', [ProjectionActionsController::class, 'resume']);
         Route::post('api/projections/{streamId}/trigger', [ProjectionActionsController::class, 'trigger']);
         Route::post('api/projections/{streamId}/replay', [ProjectionActionsController::class, 'replay']);
+        Route::post('api/projections/{streamId}/background-replay/start', [ProjectionActionsController::class, 'startBackgroundReplay']);
+        Route::post('api/projections/{streamId}/background-replay/trigger', [ProjectionActionsController::class, 'triggerBackgroundReplay']);
+        Route::post('api/projections/{streamId}/background-replay/swap', [ProjectionActionsController::class, 'swapBackgroundReplay']);
+        Route::post('api/projections/{streamId}/background-replay/cancel', [ProjectionActionsController::class, 'cancelBackgroundReplay']);
 
         Route::get('api/analytics/throughput', [AnalyticsController::class, 'eventThroughput']);
         Route::get('api/analytics/event-types', [AnalyticsController::class, 'eventTypeDistribution']);

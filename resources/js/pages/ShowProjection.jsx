@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { get, post } from '../api';
 import { usePolling } from '../hooks/usePolling';
@@ -8,9 +9,10 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { ChartContainer, ChartTooltipContent, getChartColor } from '../components/ui/chart';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { Play, Pause, RefreshCw, Rocket, Loader2, Settings, Skull, TrendingUp, Timer, ExternalLink } from 'lucide-react';
+import { Play, Pause, RefreshCw, Rocket, Loader2, Settings, Skull, TrendingUp, Timer, ExternalLink, ArrowRightLeft, X, Database } from 'lucide-react';
 
 const basePath = window.__SAUCY_CONFIG__?.basePath || '/saucy-dashboard';
 
@@ -45,6 +47,10 @@ export default function ShowProjection() {
     const { data: snapshotData } = usePolling(() => get(`/snapshots/${streamId}?hours=24`), 15000);
     const { data: speedData } = usePolling(() => get(`/analytics/processing-speed?stream_id=${streamId}&hours=24`), 15000);
 
+    const [showSwapConfirm, setShowSwapConfirm] = useState(false);
+    const [showStartReplayConfirm, setShowStartReplayConfirm] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+
     const paused = data?.paused ?? false;
     const activity = data?.activity || [];
     const position = data?.position ?? 0;
@@ -54,8 +60,14 @@ export default function ShowProjection() {
     const poisonMessageCount = data?.poison_message_count ?? 0;
     const projectorClass = data?.projector_class;
     const projectorFilePath = data?.projector_file_path;
+    const supportsBackgroundReplay = data?.supports_background_replay ?? false;
+    const replay = data?.replay;
     const progressPct = maxPosition > 0 ? Math.round((position / maxPosition) * 100) : 0;
     const behind = maxPosition - position;
+
+    const replayPosition = replay?.position ?? 0;
+    const replayProgressPct = maxPosition > 0 ? Math.round((replayPosition / maxPosition) * 100) : 0;
+    const replayBehind = maxPosition - replayPosition;
 
     const snapshots = snapshotData?.snapshots || [];
     const lagData = snapshots.map(s => ({
@@ -102,6 +114,72 @@ export default function ShowProjection() {
         notify(message);
     }
 
+    async function handleStartBackgroundReplay() {
+        setShowStartReplayConfirm(false);
+        setActionLoading(true);
+        try {
+            const result = await post(`/projections/${streamId}/background-replay/start`);
+            if (result.success) {
+                notify('Background replay started');
+            } else {
+                notify(result.message || 'Failed to start background replay');
+            }
+        } catch {
+            notify('Failed to start background replay');
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
+    async function handleSwapReplay() {
+        setShowSwapConfirm(false);
+        setActionLoading(true);
+        try {
+            const result = await post(`/projections/${streamId}/background-replay/swap`);
+            if (result.success) {
+                notify('Replay swapped to live');
+            } else {
+                notify(result.message || 'Failed to swap replay');
+            }
+        } catch {
+            notify('Failed to swap replay');
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
+    async function handleTriggerReplay() {
+        setActionLoading(true);
+        try {
+            const result = await post(`/projections/${streamId}/background-replay/trigger`);
+            if (result.success) {
+                notify('Background replay triggered');
+            } else {
+                notify(result.message || 'Failed to trigger replay');
+            }
+        } catch {
+            notify('Failed to trigger replay');
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
+    async function handleCancelReplay() {
+        setActionLoading(true);
+        try {
+            const result = await post(`/projections/${streamId}/background-replay/cancel`);
+            if (result.success) {
+                notify('Background replay cancelled');
+            } else {
+                notify(result.message || 'Failed to cancel replay');
+            }
+        } catch {
+            notify('Failed to cancel replay');
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
     return (
         <>
             <header>
@@ -143,6 +221,12 @@ export default function ShowProjection() {
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 Replay
                             </Button>
+                            {supportsBackgroundReplay && !replay && (
+                                <Button variant="outline" onClick={() => setShowStartReplayConfirm(true)} disabled={actionLoading}>
+                                    <Database className="h-4 w-4 mr-2" />
+                                    Background Replay
+                                </Button>
+                            )}
                             <Button onClick={() => handleAction('trigger', 'Process started')}>
                                 <Rocket className="h-4 w-4 mr-2" />
                                 Trigger
@@ -153,6 +237,110 @@ export default function ShowProjection() {
             </header>
             <main>
                 <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+                    {/* Background Replay Status */}
+                    {replay && (
+                        <Card className="border-blue-500/50">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Database className="h-4 w-4 text-blue-500" />
+                                        <CardTitle className="text-sm font-medium">Background Replay</CardTitle>
+                                        <Badge variant={
+                                            replay.status === 'running' ? 'info' :
+                                            replay.status === 'swapping' ? 'warning' :
+                                            replay.status === 'completed' ? 'success' :
+                                            replay.status === 'failed' ? 'destructive' : 'secondary'
+                                        }>
+                                            {replay.status}
+                                        </Badge>
+                                        {replay.has_process && replay.status === 'running' && (
+                                            <Badge variant="outline" className="text-[10px]">
+                                                {replay.process_status || 'active'}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {replay.status === 'running' && (
+                                            <>
+                                                {!replay.has_process && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleTriggerReplay}
+                                                        disabled={actionLoading}
+                                                    >
+                                                        <Rocket className="h-4 w-4 mr-2" />
+                                                        Trigger
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => setShowSwapConfirm(true)}
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? (
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    ) : (
+                                                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                                    )}
+                                                    Set Live
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleCancelReplay}
+                                                    disabled={actionLoading}
+                                                >
+                                                    <X className="h-4 w-4 mr-2" />
+                                                    Cancel
+                                                </Button>
+                                            </>
+                                        )}
+                                        {replay.status === 'failed' && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleCancelReplay}
+                                                disabled={actionLoading}
+                                            >
+                                                <X className="h-4 w-4 mr-2" />
+                                                Dismiss
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-muted-foreground">Live projection</span>
+                                            <span className="font-medium">{position.toLocaleString()}</span>
+                                        </div>
+                                        <Progress value={progressPct} className="h-2" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-muted-foreground">Replay projection</span>
+                                            <span className="font-medium">{replayPosition.toLocaleString()}</span>
+                                        </div>
+                                        <Progress value={replayProgressPct} className="h-2" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>
+                                        Replay is {replayBehind === 0 ? (
+                                            <Badge variant="success" className="ml-1">caught up</Badge>
+                                        ) : (
+                                            <>{replayBehind.toLocaleString()} events behind max</>
+                                        )}
+                                    </span>
+                                    <span>{maxPosition.toLocaleString()} total events</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Progress & Process Info */}
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card>
@@ -446,6 +634,74 @@ export default function ShowProjection() {
                     </Card>
                 </div>
             </main>
+
+            {/* Start Background Replay Confirmation */}
+            <Dialog open={showStartReplayConfirm} onClose={() => setShowStartReplayConfirm(false)}>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5 text-blue-500" />
+                        Start Background Replay
+                    </DialogTitle>
+                    <DialogDescription>
+                        This will create shadow tables and replay all events in the background. The live projection will continue operating normally. When the replay catches up, you can swap it live with zero downtime.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowStartReplayConfirm(false)}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleStartBackgroundReplay} disabled={actionLoading}>
+                        {actionLoading ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Database className="h-4 w-4 mr-2" />
+                        )}
+                        Start Background Replay
+                    </Button>
+                </DialogFooter>
+            </Dialog>
+
+            {/* Swap Confirmation */}
+            <Dialog open={showSwapConfirm} onClose={() => setShowSwapConfirm(false)}>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                        Set Replay Live
+                    </DialogTitle>
+                    <DialogDescription>
+                        This will pause the live projection, let the replay catch up to the same position, then atomically swap the replay tables into the live position. The projection will resume automatically after the swap.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="px-6 pb-2">
+                    <div className="rounded-md border bg-muted/50 p-3 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Live position</span>
+                            <span className="font-medium">{position.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Replay position</span>
+                            <span className="font-medium">{replayPosition.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Gap to close</span>
+                            <span className="font-medium">{(position - replayPosition).toLocaleString()} events</span>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowSwapConfirm(false)}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSwapReplay} disabled={actionLoading}>
+                        {actionLoading ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        )}
+                        Set Live
+                    </Button>
+                </DialogFooter>
+            </Dialog>
         </>
     );
 }

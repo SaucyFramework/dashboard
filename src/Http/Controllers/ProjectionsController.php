@@ -6,6 +6,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Saucy\Core\Projections\ProjectorMap;
+use Saucy\Core\Projections\Replay\BackgroundReplayStore;
+use Saucy\Core\Projections\Replay\ReplaySubscriptionFactory;
 use Saucy\Core\Subscriptions\AllStream\AllStreamSubscriptionRegistry;
 use Saucy\Core\Subscriptions\Checkpoints\CheckpointNotFound;
 use Saucy\Core\Subscriptions\Infra\RunningProcess;
@@ -14,11 +16,15 @@ use Saucy\Core\Subscriptions\Metrics\ActivityStreamLogger;
 
 class ProjectionsController
 {
-    public function index(AllStreamSubscriptionRegistry $registry, RunningProcesses $runningProcesses): JsonResponse
-    {
+    public function index(
+        AllStreamSubscriptionRegistry $registry,
+        RunningProcesses $runningProcesses,
+        BackgroundReplayStore $replayStore,
+    ): JsonResponse {
         $maxPosition = DB::table('event_store')->max('global_position') ?? 0;
         $data = [];
         $allRunning = $runningProcesses->all();
+        $allReplays = $replayStore->getAll();
 
         $poisonCounts = DB::table('poison_messages')
             ->where('status', 'poisoned')
@@ -35,6 +41,22 @@ class ProjectionsController
                 $position = 0;
             }
 
+            $replay = null;
+            $replayStatus = $allReplays[$streamId] ?? null;
+            if ($replayStatus !== null) {
+                $replayPosition = 0;
+                $replaySubscriptionId = ReplaySubscriptionFactory::replaySubscriptionId($streamId);
+                try {
+                    $replayPosition = $stream->checkpointStore->get($replaySubscriptionId)->position;
+                } catch (CheckpointNotFound) {
+                }
+
+                $replay = [
+                    'status' => $replayStatus->value,
+                    'position' => $replayPosition,
+                ];
+            }
+
             $data[] = [
                 'stream_id' => $streamId,
                 'position' => $position,
@@ -43,6 +65,7 @@ class ProjectionsController
                 'status' => $process?->status,
                 'has_process' => $process !== null,
                 'poison_message_count' => $poisonCounts[$streamId] ?? 0,
+                'replay' => $replay,
             ];
         }
 
@@ -58,6 +81,7 @@ class ProjectionsController
         ActivityStreamLogger $activityStreamLogger,
         RunningProcesses $runningProcesses,
         ProjectorMap $projectorMap,
+        BackgroundReplayStore $replayStore,
     ): JsonResponse {
         $maxPosition = DB::table('event_store')->max('global_position') ?? 0;
         $stream = $registry->get($streamId);
@@ -85,18 +109,44 @@ class ProjectionsController
         // Resolve projector class from ProjectorMap
         $projectorClass = null;
         $projectorFilePath = null;
+        $supportsBackgroundReplay = false;
         foreach ($projectorMap->getProjectorConfigs() as $config) {
             $subId = (string) Str::of($config->projectorClass)->afterLast('\\')->snake();
             if ($subId === $streamId) {
                 $projectorClass = $config->projectorClass;
                 if (class_exists($projectorClass)) {
                     try {
-                        $projectorFilePath = (new \ReflectionClass($projectorClass))->getFileName();
+                        $reflection = new \ReflectionClass($projectorClass);
+                        $projectorFilePath = $reflection->getFileName();
+                        $supportsBackgroundReplay = $reflection->implementsInterface(
+                            \Saucy\Core\Projections\Replay\SupportsBackgroundReplay::class
+                        );
                     } catch (\Throwable) {
                     }
                 }
                 break;
             }
+        }
+
+        // Background replay status
+        $replay = null;
+        $replayStatus = $replayStore->getStatus($streamId);
+        if ($replayStatus !== null) {
+            $replayPosition = 0;
+            $replaySubscriptionId = ReplaySubscriptionFactory::replaySubscriptionId($streamId);
+            try {
+                $replayPosition = $stream->checkpointStore->get($replaySubscriptionId)->position;
+            } catch (CheckpointNotFound) {
+            }
+
+            $replayProcess = array_values(array_filter($allRunning, fn (RunningProcess $p) => $p->subscriptionId === $replaySubscriptionId))[0] ?? null;
+
+            $replay = [
+                'status' => $replayStatus->value,
+                'position' => $replayPosition,
+                'has_process' => $replayProcess !== null,
+                'process_status' => $replayProcess?->status,
+            ];
         }
 
         return response()->json([
@@ -107,6 +157,8 @@ class ProjectionsController
             'poison_message_count' => $poisonMessageCount,
             'projector_class' => $projectorClass,
             'projector_file_path' => $projectorFilePath,
+            'supports_background_replay' => $supportsBackgroundReplay,
+            'replay' => $replay,
             'config' => [
                 'page_size' => $stream->streamOptions->pageSize,
                 'commit_batch_size' => $stream->streamOptions->commitBatchSize,
