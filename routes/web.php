@@ -5,6 +5,8 @@ use Saucy\Dashboard\Http\Controllers\AnalyticsController;
 use Saucy\Dashboard\Http\Controllers\AuthController;
 use Saucy\Dashboard\Http\Controllers\EventStoreController;
 use Saucy\Dashboard\Http\Controllers\PoisonMessagesController;
+use Saucy\Dashboard\Http\Controllers\AggregateProjectionActionsController;
+use Saucy\Dashboard\Http\Controllers\AggregateProjectionsController;
 use Saucy\Dashboard\Http\Controllers\ProjectionActionsController;
 use Saucy\Dashboard\Http\Controllers\ProjectionsController;
 use Saucy\Dashboard\Http\Controllers\SnapshotsController;
@@ -31,6 +33,13 @@ Route::group([
         Route::post('api/projections/{streamId}/background-replay/trigger', [ProjectionActionsController::class, 'triggerBackgroundReplay']);
         Route::post('api/projections/{streamId}/background-replay/swap', [ProjectionActionsController::class, 'swapBackgroundReplay']);
         Route::post('api/projections/{streamId}/background-replay/cancel', [ProjectionActionsController::class, 'cancelBackgroundReplay']);
+
+        Route::get('api/aggregate-projections', [AggregateProjectionsController::class, 'index']);
+        Route::get('api/aggregate-projections/{subscriptionId}', [AggregateProjectionsController::class, 'show']);
+        Route::post('api/aggregate-projections/{subscriptionId}/replay-all', [AggregateProjectionActionsController::class, 'replayAll']);
+        Route::post('api/aggregate-projections/{subscriptionId}/trigger-all', [AggregateProjectionActionsController::class, 'triggerAll']);
+        Route::post('api/aggregate-projections/{subscriptionId}/instances/{aggregateId}/replay', [AggregateProjectionActionsController::class, 'replayInstance']);
+        Route::post('api/aggregate-projections/{subscriptionId}/instances/{aggregateId}/trigger', [AggregateProjectionActionsController::class, 'triggerInstance']);
 
         Route::get('api/analytics/throughput', [AnalyticsController::class, 'eventThroughput']);
         Route::get('api/analytics/event-types', [AnalyticsController::class, 'eventTypeDistribution']);

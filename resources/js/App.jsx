@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projections from './pages/Projections';
 import ShowProjection from './pages/ShowProjection';
+import ShowAggregateProjection from './pages/ShowAggregateProjection';
 import PoisonMessages from './pages/PoisonMessages';
 import ShowPoisonMessage from './pages/ShowPoisonMessage';
 import EventStore from './pages/EventStore';
@@ -44,6 +45,7 @@ export default function App() {
                 >
                     <Route index element={<Dashboard />} />
                     <Route path="projections" element={<Projections />} />
+                    <Route path="projections/aggregate/:subscriptionId" element={<ShowAggregateProjection />} />
                     <Route path="projections/:streamId" element={<ShowProjection />} />
                     <Route path="events" element={<EventStore />} />
                     <Route path="poison-messages" element={<PoisonMessages />} />

@@ -8,11 +8,17 @@ use Saucy\Core\Subscriptions\AllStream\AllStreamSubscriptionRegistry;
 use Saucy\Core\Subscriptions\Checkpoints\CheckpointNotFound;
 use Saucy\Core\Subscriptions\Infra\RunningProcess;
 use Saucy\Core\Subscriptions\Infra\RunningProcesses;
+use Saucy\Core\Subscriptions\StreamSubscription\StreamSubscriptionRegistry;
+use Saucy\Core\Subscriptions\StreamSubscription\SyncStreamSubscriptionRegistry;
 
 class StatsController
 {
-    public function __invoke(AllStreamSubscriptionRegistry $registry, RunningProcesses $runningProcesses): JsonResponse
-    {
+    public function __invoke(
+        AllStreamSubscriptionRegistry $registry,
+        RunningProcesses $runningProcesses,
+        StreamSubscriptionRegistry $asyncStreamRegistry,
+        SyncStreamSubscriptionRegistry $syncStreamRegistry,
+    ): JsonResponse {
         $maxPosition = DB::table('event_store')->max('global_position') ?? 0;
         $allRunning = $runningProcesses->all();
 
@@ -56,10 +62,19 @@ class StatsController
             'skipped' => (int) ($poisonCounts['skipped'] ?? 0),
         ];
 
+        $aggregateProjectorCount = count(array_unique(
+            array_merge(
+                array_keys($asyncStreamRegistry->streams),
+                array_keys($syncStreamRegistry->streams),
+            )
+        ));
+
         return response()->json([
             'total_events' => $maxPosition,
             'projections' => [
-                'total' => count($registry->streams),
+                'total' => count($registry->streams) + $aggregateProjectorCount,
+                'all_stream' => count($registry->streams),
+                'aggregate' => $aggregateProjectorCount,
                 'running' => $running,
                 'paused' => $paused,
                 'standby' => $standby,

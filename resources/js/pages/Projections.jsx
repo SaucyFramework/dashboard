@@ -11,9 +11,15 @@ import { Progress } from '../components/ui/progress';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Rocket, RefreshCw, AlertTriangle, Skull, Database } from 'lucide-react';
+import { Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, X, Rocket, RefreshCw, AlertTriangle, Skull, Database, Boxes } from 'lucide-react';
 
 const basePath = window.__SAUCY_CONFIG__?.basePath || '/saucy-dashboard';
+
+const TYPE_FILTERS = [
+    { key: 'all', label: 'All' },
+    { key: 'all_stream', label: 'All Stream' },
+    { key: 'aggregate', label: 'Aggregate' },
+];
 
 const STATUS_FILTERS = [
     { key: 'all', label: 'All' },
@@ -24,6 +30,7 @@ const STATUS_FILTERS = [
 ];
 
 function getStatus(p) {
+    if (p.type === 'aggregate') return null;
     if (!p.has_process) return 'standby';
     if (p.paused) return 'paused';
     return 'running';
@@ -32,9 +39,11 @@ function getStatus(p) {
 export default function Projections() {
     const navigate = useNavigate();
     const { notify } = useNotifications();
-    const { data, loading } = usePolling(() => get('/projections'), 10000);
+    const { data: allStreamData, loading: allStreamLoading } = usePolling(() => get('/projections'), 10000);
+    const { data: aggregateData, loading: aggregateLoading } = usePolling(() => get('/aggregate-projections'), 10000);
 
     const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [sortKey, setSortKey] = useState('stream');
     const [sortDir, setSortDir] = useState('asc');
@@ -42,8 +51,26 @@ export default function Projections() {
     const [showReplayConfirm, setShowReplayConfirm] = useState(false);
     const [bulkLoading, setBulkLoading] = useState(false);
 
-    const projections = data?.projections || [];
-    const maxPosition = data?.max_position || 0;
+    const loading = allStreamLoading || aggregateLoading;
+    const data = allStreamData || aggregateData;
+
+    const maxPosition = allStreamData?.max_position || 0;
+
+    // Merge both types into a unified list
+    const projections = useMemo(() => {
+        const allStream = (allStreamData?.projections || []).map(p => ({
+            ...p,
+            type: 'all_stream',
+            id: p.stream_id,
+        }));
+        const aggregate = (aggregateData?.aggregate_projections || []).map(p => ({
+            ...p,
+            type: 'aggregate',
+            id: p.subscription_id,
+            stream_id: p.subscription_id,
+        }));
+        return [...allStream, ...aggregate];
+    }, [allStreamData, aggregateData]);
 
     function handleSort(key) {
         if (sortKey === key) {
@@ -62,8 +89,13 @@ export default function Projections() {
             result = result.filter(p => p.stream_id.toLowerCase().includes(q));
         }
 
+        if (typeFilter !== 'all') {
+            result = result.filter(p => p.type === typeFilter);
+        }
+
         if (statusFilter !== 'all') {
             result = result.filter(p => {
+                if (p.type === 'aggregate') return false;
                 const status = getStatus(p);
                 if (statusFilter === 'behind') {
                     return maxPosition > 0 && p.position < maxPosition;
@@ -79,14 +111,16 @@ export default function Projections() {
                     cmp = a.stream_id.localeCompare(b.stream_id);
                     break;
                 case 'position':
-                    cmp = a.position - b.position;
+                    cmp = (a.position ?? 0) - (b.position ?? 0);
                     break;
-                case 'progress':
-                    cmp = (maxPosition > 0 ? a.position / maxPosition : 0) - (maxPosition > 0 ? b.position / maxPosition : 0);
+                case 'type':
+                    cmp = a.type.localeCompare(b.type);
                     break;
                 case 'status': {
                     const order = { running: 0, paused: 1, standby: 2 };
-                    cmp = (order[getStatus(a)] ?? 3) - (order[getStatus(b)] ?? 3);
+                    const sa = getStatus(a);
+                    const sb = getStatus(b);
+                    cmp = (order[sa] ?? 3) - (order[sb] ?? 3);
                     break;
                 }
             }
@@ -94,9 +128,11 @@ export default function Projections() {
         });
 
         return result;
-    }, [projections, search, statusFilter, sortKey, sortDir, maxPosition]);
+    }, [projections, search, typeFilter, statusFilter, sortKey, sortDir, maxPosition]);
 
-    const filteredIds = useMemo(() => new Set(filtered.map(p => p.stream_id)), [filtered]);
+    // Selection only for all-stream projections (bulk actions)
+    const selectableFiltered = useMemo(() => filtered.filter(p => p.type === 'all_stream'), [filtered]);
+    const filteredIds = useMemo(() => new Set(selectableFiltered.map(p => p.stream_id)), [selectableFiltered]);
     const visibleSelected = useMemo(() => {
         const s = new Set();
         for (const id of selected) {
@@ -105,20 +141,20 @@ export default function Projections() {
         return s;
     }, [selected, filteredIds]);
 
-    const allVisibleSelected = filtered.length > 0 && visibleSelected.size === filtered.length;
+    const allVisibleSelected = selectableFiltered.length > 0 && visibleSelected.size === selectableFiltered.length;
     const someVisibleSelected = visibleSelected.size > 0 && !allVisibleSelected;
 
     function toggleSelectAll() {
         if (allVisibleSelected) {
             setSelected(prev => {
                 const next = new Set(prev);
-                for (const p of filtered) next.delete(p.stream_id);
+                for (const p of selectableFiltered) next.delete(p.stream_id);
                 return next;
             });
         } else {
             setSelected(prev => {
                 const next = new Set(prev);
-                for (const p of filtered) next.add(p.stream_id);
+                for (const p of selectableFiltered) next.add(p.stream_id);
                 return next;
             });
         }
@@ -161,6 +197,14 @@ export default function Projections() {
         await handleBulkAction('replay', 'Replay started for');
     }
 
+    function handleRowClick(p) {
+        if (p.type === 'aggregate') {
+            navigate(`${basePath}/projections/aggregate/${encodeURIComponent(p.subscription_id)}`);
+        } else {
+            navigate(`${basePath}/projections/${p.stream_id}`);
+        }
+    }
+
     function SortIcon({ column }) {
         if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
         return sortDir === 'asc'
@@ -182,10 +226,18 @@ export default function Projections() {
         );
     }
 
-    function lagDisplay(position) {
+    function lagDisplay(p) {
+        if (p.type === 'aggregate') {
+            return (
+                <span className="text-xs text-muted-foreground">
+                    {p.instance_count.toLocaleString()} instance{p.instance_count !== 1 ? 's' : ''}
+                </span>
+            );
+        }
+
         if (maxPosition === 0) return null;
-        const pct = Math.round((position / maxPosition) * 100);
-        const behind = maxPosition - position;
+        const pct = Math.round((p.position / maxPosition) * 100);
+        const behind = maxPosition - p.position;
 
         if (behind === 0) {
             return (
@@ -203,6 +255,50 @@ export default function Projections() {
         );
     }
 
+    function statusDisplay(p) {
+        if (p.type === 'aggregate') {
+            return (
+                <div className="flex items-center gap-2">
+                    <Badge variant={p.async ? 'info' : 'secondary'} className="text-[10px]">
+                        {p.async ? 'async' : 'sync'}
+                    </Badge>
+                    {p.poison_message_count > 0 && (
+                        <Badge variant="destructive" className="text-[10px] gap-1">
+                            <Skull className="h-3 w-3" />
+                            {p.poison_message_count}
+                        </Badge>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex items-center gap-2">
+                {p.has_process ? (
+                    p.paused ? (
+                        <StatusIndicator color="orange" label={p.paused_reason} />
+                    ) : (
+                        <StatusIndicator color="green" label={p.status} />
+                    )
+                ) : (
+                    <StatusIndicator color="blue" label="standby" />
+                )}
+                {p.replay && (
+                    <Badge variant="info" className="text-[10px] gap-1">
+                        <Database className="h-3 w-3" />
+                        {p.replay.status}
+                    </Badge>
+                )}
+                {p.poison_message_count > 0 && (
+                    <Badge variant="destructive" className="text-[10px] gap-1">
+                        <Skull className="h-3 w-3" />
+                        {p.poison_message_count}
+                    </Badge>
+                )}
+            </div>
+        );
+    }
+
     return (
         <>
             <header>
@@ -215,7 +311,7 @@ export default function Projections() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Projections</CardTitle>
-                            <CardDescription>All registered event sourcing projections</CardDescription>
+                            <CardDescription>All registered projections and aggregate projectors</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Search & Filters */}
@@ -238,6 +334,28 @@ export default function Projections() {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1 flex-wrap">
+                                    {TYPE_FILTERS.map(f => (
+                                        <Button
+                                            key={f.key}
+                                            variant={typeFilter === f.key ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => { setTypeFilter(f.key); setStatusFilter('all'); }}
+                                            className="text-xs h-8"
+                                        >
+                                            {f.label}
+                                            {f.key !== 'all' && (
+                                                <span className="ml-1 opacity-70">
+                                                    {projections.filter(p => p.type === f.key).length}
+                                                </span>
+                                            )}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Status Filters (only relevant for all-stream) */}
+                            {typeFilter !== 'aggregate' && (
+                                <div className="flex items-center gap-1 flex-wrap">
                                     {STATUS_FILTERS.map(f => (
                                         <Button
                                             key={f.key}
@@ -247,18 +365,18 @@ export default function Projections() {
                                             className="text-xs h-8"
                                         >
                                             {f.label}
-                                            {f.key !== 'all' && data && (
+                                            {f.key !== 'all' && allStreamData && (
                                                 <span className="ml-1 opacity-70">
                                                     {f.key === 'behind'
-                                                        ? projections.filter(p => maxPosition > 0 && p.position < maxPosition).length
-                                                        : projections.filter(p => getStatus(p) === f.key).length
+                                                        ? (allStreamData.projections || []).filter(p => maxPosition > 0 && p.position < maxPosition).length
+                                                        : (allStreamData.projections || []).filter(p => getStatus({ ...p, type: 'all_stream' }) === f.key).length
                                                     }
                                                 </span>
                                             )}
                                         </Button>
                                     ))}
                                 </div>
-                            </div>
+                            )}
 
                             {/* Bulk Actions Bar */}
                             {visibleSelected.size > 0 && (
@@ -326,65 +444,51 @@ export default function Projections() {
                                                     className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
                                                 />
                                             </TableHead>
-                                            <SortableHead column="stream">Stream</SortableHead>
-                                            <SortableHead column="position">Position</SortableHead>
-                                            <SortableHead column="progress">Progress</SortableHead>
+                                            <SortableHead column="stream">Projection</SortableHead>
+                                            <SortableHead column="type">Type</SortableHead>
+                                            <SortableHead column="position">Progress</SortableHead>
                                             <SortableHead column="status">Status</SortableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filtered.map((p) => (
                                             <TableRow
-                                                key={p.stream_id}
+                                                key={`${p.type}-${p.id}`}
                                                 className={`cursor-pointer ${selected.has(p.stream_id) ? 'bg-muted/50' : ''}`}
                                             >
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selected.has(p.stream_id)}
-                                                        onChange={() => toggleSelect(p.stream_id)}
-                                                        className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
-                                                    />
+                                                    {p.type === 'all_stream' ? (
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected.has(p.stream_id)}
+                                                            onChange={() => toggleSelect(p.stream_id)}
+                                                            className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                                                        />
+                                                    ) : (
+                                                        <span className="block w-4" />
+                                                    )}
                                                 </TableCell>
                                                 <TableCell
                                                     className="font-medium"
-                                                    onClick={() => navigate(`${basePath}/projections/${p.stream_id}`)}
+                                                    onClick={() => handleRowClick(p)}
                                                 >
                                                     {p.stream_id}
                                                 </TableCell>
-                                                <TableCell
-                                                    className="text-muted-foreground"
-                                                    onClick={() => navigate(`${basePath}/projections/${p.stream_id}`)}
-                                                >
-                                                    {p.position.toLocaleString()}
+                                                <TableCell onClick={() => handleRowClick(p)}>
+                                                    {p.type === 'aggregate' ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Boxes className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            <span className="text-xs text-muted-foreground">{p.aggregate_type}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">all stream</span>
+                                                    )}
                                                 </TableCell>
-                                                <TableCell onClick={() => navigate(`${basePath}/projections/${p.stream_id}`)}>
-                                                    {lagDisplay(p.position)}
+                                                <TableCell onClick={() => handleRowClick(p)}>
+                                                    {lagDisplay(p)}
                                                 </TableCell>
-                                                <TableCell onClick={() => navigate(`${basePath}/projections/${p.stream_id}`)}>
-                                                    <div className="flex items-center gap-2">
-                                                        {p.has_process ? (
-                                                            p.paused ? (
-                                                                <StatusIndicator color="orange" label={p.paused_reason} />
-                                                            ) : (
-                                                                <StatusIndicator color="green" label={p.status} />
-                                                            )
-                                                        ) : (
-                                                            <StatusIndicator color="blue" label="standby" />
-                                                        )}
-                                                        {p.replay && (
-                                                            <Badge variant="info" className="text-[10px] gap-1">
-                                                                <Database className="h-3 w-3" />
-                                                                {p.replay.status}
-                                                            </Badge>
-                                                        )}
-                                                        {p.poison_message_count > 0 && (
-                                                            <Badge variant="destructive" className="text-[10px] gap-1">
-                                                                <Skull className="h-3 w-3" />
-                                                                {p.poison_message_count}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                <TableCell onClick={() => handleRowClick(p)}>
+                                                    {statusDisplay(p)}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -393,7 +497,7 @@ export default function Projections() {
                             )}
 
                             {/* Result count */}
-                            {data && (
+                            {(allStreamData || aggregateData) && (
                                 <div className="text-xs text-muted-foreground">
                                     {filtered.length === projections.length
                                         ? `${projections.length} projection${projections.length !== 1 ? 's' : ''}`
