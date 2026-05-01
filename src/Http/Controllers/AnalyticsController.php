@@ -23,7 +23,8 @@ class AnalyticsController
                 ->map(fn (object $row) => [
                     'hour' => $row->hour,
                     'count' => (int) $row->count,
-                ]);
+                ])
+                ->all();
         });
 
         return response()->json(['throughput' => $throughput]);
@@ -44,7 +45,8 @@ class AnalyticsController
                 ->map(fn (object $row) => [
                     'type' => $row->message_type,
                     'count' => (int) $row->count,
-                ]);
+                ])
+                ->all();
         });
 
         return response()->json(['event_types' => $eventTypes]);
