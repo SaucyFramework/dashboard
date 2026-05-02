@@ -270,17 +270,16 @@ export default function ShowProjection() {
                                     <div className="flex items-center gap-2">
                                         {replay.status === 'running' && (
                                             <>
-                                                {!replay.has_process && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={handleTriggerReplay}
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <Rocket className="h-4 w-4 mr-2" />
-                                                        Trigger
-                                                    </Button>
-                                                )}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleTriggerReplay}
+                                                    disabled={actionLoading}
+                                                    title={replay.has_process ? 'Re-dispatch the poll job (no-op if a process is genuinely active)' : 'Re-dispatch the poll job for this replay'}
+                                                >
+                                                    <Rocket className="h-4 w-4 mr-2" />
+                                                    Trigger
+                                                </Button>
                                                 <Button
                                                     size="sm"
                                                     onClick={() => setShowSwapConfirm(true)}
